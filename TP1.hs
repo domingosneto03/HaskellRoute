@@ -45,7 +45,11 @@ rome roadmap = let cities = concatMap (\(c1, c2, _) -> [c1, c2]) roadmap
                in [city | (city, count) <- cityCount, count == max]
 
 isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected = undefined
+isStronglyConnected roadmap =
+    let allCities = cities roadmap
+        startCity = head allCities
+        reachable = dfs roadmap startCity []
+    in length reachable == length allCities
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
@@ -69,6 +73,13 @@ getFromJust Nothing  = error "getFromJust: Nothing value"
 isJust :: Maybe a -> Bool -- check if a Maybe value is Just
 isJust (Just _) = True
 isJust Nothing  = False
+
+dfs :: RoadMap -> City -> [City] -> [City] -- depht first search through the graph
+dfs roadmap city visited =
+    let newVisited = city : visited
+        neighbors = map fst (adjacent roadmap city)
+    in foldr (\n acc -> if n `elem` visited then acc else dfs roadmap n newVisited) newVisited neighbors
+
 
 
 -- Some graphs to test your work
