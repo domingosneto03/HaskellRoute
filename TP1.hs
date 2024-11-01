@@ -19,7 +19,8 @@ cities roadmap = rmDups [city | (c1, c2, _) <- roadmap, city <- [c1, c2]]
 
 
 areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent roadmap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1)) roadmap
+areAdjacent roadmap city1 city2 = any checkAdj roadmap
+  where checkAdj (c1, c2, _) = (city1 == c1 && city2 == c2) || (city1 == c2 && city2 == c1)
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance [] _ _ = Nothing
@@ -31,14 +32,17 @@ adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent roadmap city = [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- roadmap, areAdjacent roadmap city (if c1 == city then c2 else c1)]
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance roadmap path =
-    let distances = zipWith (distance roadmap) path (tail path)
+pathDistance roadmap path = let distances = zipWith (distance roadmap) path (tail path)
     in if all isJust distances  -- check if all distances are Just
        then Just (sum (map getFromJust distances))  -- sum all Just values
        else Nothing
 
 rome :: RoadMap -> [City]
-rome = undefined
+rome roadmap = let cities = concatMap (\(c1, c2, _) -> [c1, c2]) roadmap
+                   citiesGrouped = Data.List.group (Data.List.sort cities)
+                   cityCount = [(city, length group) | group <- citiesGrouped, let city = head group]
+                   max = maximum (map snd cityCount)
+               in [city | (city, count) <- cityCount, count == max]
 
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected = undefined
