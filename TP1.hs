@@ -15,8 +15,7 @@ type Distance = Int
 type RoadMap = [(City,City,Distance)]
 
 cities :: RoadMap -> [City]
-cities = do
-    l
+cities roadmap = rmDups [city | (c1, c2, _) <- roadmap, city <- [c1, c2]]
 
 
 areAdjacent :: RoadMap -> City -> City -> Bool
@@ -45,6 +44,13 @@ travelSales = undefined
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
+
+-- aux functions
+
+rmDups :: (Eq a) => [a] -> [a] -- removes duplicates from a list
+rmDups [] = []
+rmDups (x:xs) = x : rmDups (filter (/= x) xs)
+
 
 -- Some graphs to test your work
 gTest1 :: RoadMap
