@@ -23,7 +23,7 @@ areAdjacent roadmap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == cit
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance [] _ _ = Nothing
-distance ((c1, c2, d):xs) city1 city2 
+distance ((c1, c2, d):xs) city1 city2
     | (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1) = Just d
     | otherwise = distance xs city1 city2
 
@@ -31,7 +31,11 @@ adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent roadmap city = [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- roadmap, areAdjacent roadmap city (if c1 == city then c2 else c1)]
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance = undefined
+pathDistance roadmap path =
+    let distances = zipWith (distance roadmap) path (tail path)
+    in if all isJust distances  -- check if all distances are Just
+       then Just (sum (map getFromJust distances))  -- sum all Just values
+       else Nothing
 
 rome :: RoadMap -> [City]
 rome = undefined
@@ -53,6 +57,14 @@ tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do
 rmDups :: (Eq a) => [a] -> [a] -- removes duplicates from a list
 rmDups [] = []
 rmDups (x:xs) = x : rmDups (filter (/= x) xs)
+
+getFromJust :: Maybe a -> a -- get the value from a Just
+getFromJust (Just x) = x
+getFromJust Nothing  = error "getFromJust: Nothing value"
+
+isJust :: Maybe a -> Bool -- check if a Maybe value is Just
+isJust (Just _) = True
+isJust Nothing  = False
 
 
 -- Some graphs to test your work
