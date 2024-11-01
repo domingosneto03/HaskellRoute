@@ -28,7 +28,7 @@ distance ((c1, c2, d):xs) city1 city2
     | otherwise = distance xs city1 city2
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent = undefined
+adjacent roadmap city = [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- roadmap, areAdjacent roadmap city (if c1 == city then c2 else c1)]
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance = undefined
