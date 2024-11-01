@@ -29,7 +29,9 @@ distance ((c1, c2, d):xs) city1 city2
     | otherwise = distance xs city1 city2
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent roadmap city = [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- roadmap, areAdjacent roadmap city (if c1 == city then c2 else c1)]
+adjacent roadmap city =
+    let connections = filter (\(c1, c2, _) -> c1 == city || c2 == city) roadmap
+    in [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- connections]
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance roadmap path = let distances = zipWith (distance roadmap) path (tail path)
