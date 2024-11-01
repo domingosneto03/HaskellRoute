@@ -19,7 +19,7 @@ cities roadmap = rmDups [city | (c1, c2, _) <- roadmap, city <- [c1, c2]]
 
 
 areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent = undefined
+areAdjacent roadmap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1)) roadmap
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance = undefined
