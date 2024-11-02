@@ -54,7 +54,12 @@ isStronglyConnected roadmap =
     in length reachable == length allCities
 
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath = undefined
+shortestPath roadmap start goal =
+    let allCities = cities roadmap
+        initialDistances = [(c, if c == start then 0 else maxBound :: Int) | c <- allCities]
+        initialPreds = [(c, Nothing) | c <- allCities]
+        queue = pqInsert (0, start) pqEmpty
+    in dijkstra roadmap queue initialDistances initialPreds goal
 
 travelSales :: RoadMap -> Path
 travelSales = undefined
@@ -81,6 +86,70 @@ dfs roadmap city visited =
     let newVisited = city : visited
         neighbors = map fst (adjacent roadmap city)
     in foldr (\n acc -> if n `elem` visited then acc else dfs roadmap n newVisited) newVisited neighbors
+
+dijkstra :: RoadMap -> PriorityQueue City -> [(City, Distance)] -> [(City, Maybe City)] -> City -> [Path]
+dijkstra _ (PriorityQueue []) distances preds _ = []  -- No path if queue is empty
+dijkstra roadmap queue distances preds goal = 
+    case pqPop queue of
+        Nothing -> []  -- Queue is empty, no path found
+        Just ((dist, city), queue') 
+            | city == goal -> [reconstructPath preds goal]  -- Goal reached, reconstruct path
+            | otherwise -> 
+                let neighbors = adjacent roadmap city
+                    (newDistances, newPreds, newQueue) = foldr (relax city dist) (distances, preds, queue') neighbors
+                in dijkstra roadmap newQueue newDistances newPreds goal
+
+relax :: City -> Distance -> (City, Distance) -> ([(City, Distance)], [(City, Maybe City)], PriorityQueue City) -> ([(City, Distance)], [(City, Maybe City)], PriorityQueue City)
+relax city dist (neighbor, d) (distances, preds, queue) =
+    let newDist = dist + d
+        currentDist = lookup neighbor distances
+    in case currentDist of
+        Just currD | newDist < currD -> 
+            (update distances neighbor newDist, update preds neighbor (Just city), pqInsert (newDist, neighbor) queue)
+        _ -> (distances, preds, queue)
+
+update :: Eq a => [(a, b)] -> a -> b -> [(a, b)]
+update [] _ _ = []
+update ((k, v):xs) key newVal
+    | k == key = (k, newVal) : xs
+    | otherwise = (k, v) : update xs key newVal
+
+reconstructPath :: [(City, Maybe City)] -> City -> Path
+reconstructPath preds goal = buildPath goal []
+  where
+    -- Filter out the `Nothing` entries to get only direct city-to-city mappings
+    filteredPreds :: [(City, City)]
+    filteredPreds = [(city, predCity) | (city, Just predCity) <- preds]
+
+    -- Trace back the path from the goal to the start city
+    buildPath :: City -> [City] -> [City]
+    buildPath city acc = 
+      case lookup city filteredPreds of
+        Nothing       -> city : acc               -- Base case: reached the start city
+        Just predCity -> buildPath predCity (city : acc)  -- Recursive case: continue with predecessor
+
+
+
+
+-- custom data structures
+
+data PriorityQueue a where
+  PriorityQueue :: [(Distance, a)] -> PriorityQueue a
+  deriving Show
+
+pqEmpty :: PriorityQueue a
+pqEmpty = PriorityQueue []
+
+pqInsert :: (Distance, a) -> PriorityQueue a -> PriorityQueue a
+pqInsert item (PriorityQueue queue) = PriorityQueue (insertSorted item queue)
+    where insertSorted x [] = [x]
+          insertSorted x (y:ys)
+              | fst x <= fst y = x : y : ys
+              | otherwise = y : insertSorted x ys
+
+pqPop :: PriorityQueue a -> Maybe ((Distance, a), PriorityQueue a)
+pqPop (PriorityQueue []) = Nothing
+pqPop (PriorityQueue (x:xs)) = Just (x, PriorityQueue xs)
 
 
 
