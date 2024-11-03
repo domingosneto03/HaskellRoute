@@ -21,46 +21,48 @@ type Distance = Int
 type RoadMap = [(City,City,Distance)]
 
 
-cities :: RoadMap -> [City]
+cities :: RoadMap -> [City] -- extract all unique cities from a roadmap
 cities roadmap = rmDups [city | (c1, c2, _) <- roadmap, city <- [c1, c2]]
 
 
-areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent roadmap city1 city2 = any checkAdj roadmap
+areAdjacent :: RoadMap -> City -> City -> Bool -- check if two cities are directly linked in the roadmap
+areAdjacent roadmap city1 city2 = any checkAdj roadmap -- checkAdj checks if a pair of cities (c1, c2) matches (city1, city2) in either order.
   where checkAdj (c1, c2, _) = (city1 == c1 && city2 == c2) || (city1 == c2 && city2 == c1)
 
-distance :: RoadMap -> City -> City -> Maybe Distance
+distance :: RoadMap -> City -> City -> Maybe Distance -- find the distance between two cities if they are directly connected, otherwise return Nothing
 distance [] _ _ = Nothing
 distance ((c1, c2, d):xs) city1 city2
-    | (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1) = Just d
+    | (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1) = Just d -- recursively searches through the roadmap and returns the distance
     | otherwise = distance xs city1 city2
 
-adjacent :: RoadMap -> City -> [(City,Distance)]
+adjacent :: RoadMap -> City -> [(City,Distance)] -- list all cities directly connected to a given city along with their distances
 adjacent roadmap city =
-    let connections = filter (\(c1, c2, _) -> c1 == city || c2 == city) roadmap
+    let connections = filter (\(c1, c2, _) -> c1 == city || c2 == city) roadmap -- filters out all roads involving the given city
     in [(if c1 == city then c2 else c1, d) | (c1, c2, d) <- connections]
 
-pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance roadmap path = let distances = zipWith (distance roadmap) path (tail path)
+pathDistance :: RoadMap -> Path -> Maybe Distance -- total distance of a given path
+pathDistance roadmap path = 
+    let distances = zipWith (distance roadmap) path (tail path)
     in if all isJust distances  -- check if all distances are Just
        then Just (sum (map getFromJust distances))  -- sum all Just values
        else Nothing
 
-rome :: RoadMap -> [City]
-rome roadmap = let cities = concatMap (\(c1, c2, _) -> [c1, c2]) roadmap
-                   citiesGrouped = Data.List.group (Data.List.sort cities)
-                   cityCount = [(city, length group) | group <- citiesGrouped, let city = head group]
-                   max = maximum (map snd cityCount)
-               in [city | (city, count) <- cityCount, count == max]
+rome :: RoadMap -> [City] -- identify the most connected cities in the roadmap
+rome roadmap = 
+    let cities = concatMap (\(c1, c2, _) -> [c1, c2]) roadmap
+        citiesGrouped = Data.List.group (Data.List.sort cities)
+        cityCount = [(city, length group) | group <- citiesGrouped, let city = head group]
+        max = maximum (map snd cityCount)
+    in [city | (city, count) <- cityCount, count == max]
 
-isStronglyConnected :: RoadMap -> Bool
+isStronglyConnected :: RoadMap -> Bool -- check if all cities in the roadmap are reachable from any starting city
 isStronglyConnected roadmap =
     let allCities = cities roadmap
         startCity = head allCities
-        reachable = dfs roadmap startCity []
+        reachable = dfs roadmap startCity [] -- performs a dfs from a start city and verifies if all cities are reachable from that city.
     in length reachable == length allCities
 
-shortestPath :: RoadMap -> City -> City -> [Path]
+shortestPath :: RoadMap -> City -> City -> [Path] -- find the shortest paths between two cities using Dijkstra's algorithm
 shortestPath roadmap startCity finalCity
     | startCity == finalCity = [[startCity]]
     | otherwise = dijkstra [(startCity, [startCity], 0)] [] Nothing where
@@ -69,7 +71,7 @@ shortestPath roadmap startCity finalCity
             | current == finalCity =
                 let isShortest = maybe True (dist <=) minDistance
                     newMinDist = if isShortest then Just dist else minDistance
-                    pathsToReturn = ([path | isShortest])
+                    pathsToReturn = ([path | isShortest]) -- maintains a priority queue of paths to explore
                 in pathsToReturn ++ dijkstra queue visited newMinDist
             | current `elem` visited = dijkstra queue visited minDistance
             | otherwise =
