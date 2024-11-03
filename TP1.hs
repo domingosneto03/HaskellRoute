@@ -5,6 +5,7 @@ import qualified Data.Maybe as Maybe
 import qualified Data.IntMap as IntMap
 import Data.Bits (shiftL, (.&.), (.|.))
 
+
 import Debug.Trace (trace, traceShow)
 
 import GHC.Generics (Constructor(conFixity))
@@ -82,7 +83,8 @@ shortestPath roadmap startCity finalCity
 
 
 
-
+-- TSP Dynamic Programming
+{- Wrong Path Output
 travelSales :: RoadMap -> Path
 travelSales roadmap
     | not (safeSC roadmap) = [] -- Return an empty path if graph is disconnected
@@ -145,10 +147,32 @@ travelSales roadmap
             then [] 
             else pathReconstruction startingCity initialMask finalMemoizationTable
 
+-}
 
 
+
+-- Brute Force Approach to find shortest possible path for the TSP
 tspBruteForce :: RoadMap -> Path
-tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
+tspBruteForce roadmap =
+    case validPaths of
+        []      -> [] -- No valid paths, so function return empty list
+        paths -> Data.List.minimumBy compareDistance paths -- Get the path with the least Distance
+    where
+        citiesList = cities roadmap
+        allPaths = Data.List.permutations citiesList -- Generate all possible city combinations
+        validPaths = Maybe.mapMaybe (closingPath roadmap) allPaths -- filter valid Tsp Paths (only keeps the valid closed paths)
+
+        compareDistance city1 city2 = compare (pathDistance roadmap city1) (pathDistance roadmap city2)
+
+-- Adds a starting city at the end of the path and check its validity
+closingPath :: RoadMap -> Path -> Maybe Path
+closingPath roadmap path
+        | isValid = Just closedPath -- Return the closed path if valid
+        | otherwise = Nothing
+    where
+        closedPath = path ++ [head path] -- add starting city to the end
+        isValid = isJust (pathDistance roadmap closedPath) -- Check if distance if defined
+
 
 -- aux functions
 
