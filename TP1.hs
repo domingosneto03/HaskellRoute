@@ -1,6 +1,12 @@
 import qualified Data.List
-import qualified Data.Array
-import qualified Data.Bits
+-- import qualified Data.Array
+import qualified Data.Array as Arr
+import qualified Data.Maybe as Maybe
+import qualified Data.IntMap as IntMap
+import Data.Bits (shiftL, (.&.), (.|.))
+
+import Debug.Trace (trace, traceShow)
+
 import GHC.Generics (Constructor(conFixity))
 import Distribution.SPDX (LicenseId(Community_Spec_1_0))
 
@@ -13,6 +19,7 @@ type Path = [City]
 type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
+
 
 cities :: RoadMap -> [City]
 cities roadmap = rmDups [city | (c1, c2, _) <- roadmap, city <- [c1, c2]]
@@ -71,8 +78,72 @@ shortestPath roadmap startCity finalCity
                     sorted = Data.List.sortOn (\(_, _, d) -> d) new
                 in dijkstra sorted (current : visited) minDistance
 
+
+
+
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales roadmap
+    | not (safeSC roadmap) = [] -- Return an empty path if graph is disconnected
+    | otherwise =
+        let allCities = cities roadmap -- gets all cities in roadmap
+            totalCities = length allCities -- gets the total number of cities in roadmap
+            maxCitiesVisitedMask = (1 `shiftL` totalCities) - 1 -- bit mask where all cities have been visited, e.g., totalCities = 5 -> mask = 11111
+
+            -- Distance Array (stores distance between cities)
+            distanceArray = Arr.array ((0,0), (totalCities - 1, totalCities -1))
+                [((city1, city2), distance roadmap (allCities !! city1) (allCities !! city2))
+                    | city1 <- [0..totalCities - 1], city2 <- [0..totalCities - 1]]  
+
+            -- Memoization array to store minimum cost for each state (current city, already visited cities)
+            initialMemoizationTable = Arr.array ((0,0), (totalCities - 1, maxCitiesVisitedMask))
+                [((city1, mask), Nothing) | city1 <- [0..totalCities-1], mask <- [0..maxCitiesVisitedMask]]
+            -- Array that stores the next city to visit for path Reconstruction
+            initialPathMemo = Arr.array ((0,0), (totalCities - 1, maxCitiesVisitedMask)) 
+                [((city1, mask), Nothing) | city1 <- [0..totalCities-1], mask <- [0..maxCitiesVisitedMask]]
+    
+            -- Recursive Function to find minimum cost
+            tspRecMinCost :: Int -> Int -> Arr.Array (Int, Int) (Maybe Distance) -> (Distance, Arr.Array (Int, Int) (Maybe Distance))
+            tspRecMinCost position mask memoizationTable
+                -- if mask is the same as when all cities visited, return to starting city
+                | mask == maxCitiesVisitedMask = 
+                    let returnDistance = safeDistance distanceArray (position, 0)
+                    in (returnDistance, memoizationTable)
+                | Maybe.isNothing (memoizationTable Arr.! (position, mask)) =
+                    traceShow ("Exploring from Position: " ++ show position ++ ", Mask: " ++ show mask) $ 
+                    let costOptions = 
+                            [ (safeDistance distanceArray (position, nextCity) + minimumCost, nextCity)
+                            | nextCity <- [0..totalCities - 1]
+                            , (mask .&. (1 `shiftL` nextCity)) == 0 -- ensure nextCity is not visited
+                            , let (minimumCost, _) = tspRecMinCost nextCity (mask .|. (1 `shiftL` nextCity)) memoizationTable
+                            , minimumCost < maxBound -- filter out invalid paths
+                            ]
+                    in if null costOptions
+                        then (maxBound, memoizationTable)
+                        else let (minimumCost, nextCity) = minimum costOptions
+                            in (minimumCost, memoizationTable Arr.// [((position, mask), Just minimumCost)])
+                | otherwise = 
+                    let cachedResult = Maybe.fromJust (memoizationTable Arr.! (position, mask))
+                    in (cachedResult, memoizationTable)
+
+            -- Start TSP from the first City
+            startingCity = 0
+            initialMask = 1 `shiftL` startingCity
+            (minimumCost, finalMemoizationTable) = tspRecMinCost startingCity initialMask initialMemoizationTable
+        
+            -- Reconstruct the path
+            pathReconstruction :: Int -> Int -> Arr.Array (Int, Int) (Maybe Distance) -> Path
+            pathReconstruction position mask pathMemo
+                | mask == maxCitiesVisitedMask = (allCities !! position) : [head allCities] -- return to starting city
+                | otherwise =
+                    case pathMemo Arr.! (position, mask) of
+                        Just nextCity -> (allCities !! position) : pathReconstruction nextCity (mask .|. (1 `shiftL` nextCity)) pathMemo
+                        Nothing       -> [] -- Return empty if there is no path
+        
+        in if minimumCost == maxBound 
+            then [] 
+            else pathReconstruction startingCity initialMask finalMemoizationTable
+
+
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
@@ -98,6 +169,24 @@ dfs roadmap city visited =
     in foldr (\n acc -> if n `elem` visited then acc else dfs roadmap n newVisited) newVisited neighbors
 
 
+safeDistance :: Arr.Array (Int, Int) (Maybe Distance) -> (Int, Int) -> Distance -- safe distance function that defaults to infinity if no route exists
+safeDistance arr (city1, city2) =
+    let (lowerBound, upperBound) = Arr.bounds arr -- Get the bounds of the array
+        (lowerRow, lowerCol) = lowerBound -- Deconstruct the lower bound
+        (upperRow, upperCol) = upperBound -- Deconstruct the upper bound
+    in if city1 < lowerRow || city2 < lowerCol || city1 > upperRow || city2 > upperCol
+        then maxBound
+        else case arr Arr.! (city1, city2) of
+            Nothing -> maxBound
+            Just d  -> d
+
+        
+safeSC :: RoadMap -> Bool
+safeSC roadmap = 
+    let allCities = cities roadmap
+        reachableFrom city = dfs roadmap city []
+        reachableCities = map reachableFrom allCities
+    in all (\visited -> length visited == length allCities) reachableCities
 
 -- Some graphs to test your work
 gTest1 :: RoadMap
@@ -112,3 +201,8 @@ gTest3 = [("0","1",4),("2","3",2)]
 -- personal graphs
 gTest4 :: RoadMap -- test for shortest path
 gTest4 = [("0","1",1),("1","3",2), ("0","2",1), ("2","4",1), ("4","3",1)]
+
+
+-- added
+gTest5 :: RoadMap
+gTest5 = [("0", "1", 1), ("1", "2", 1), ("2", "3", 1), ("3", "0", 1)]
