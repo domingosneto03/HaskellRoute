@@ -58,16 +58,16 @@ shortestPath roadmap startCity finalCity
     | startCity == finalCity = [[startCity]]
     | otherwise = dijkstra [(startCity, [startCity], 0)] [] Nothing where
         dijkstra [] _ _ = []
-        dijkstra ((current, path, distance):queue) visited minDistance
+        dijkstra ((current, path, dist):queue) visited minDistance
             | current == finalCity =
-                let isShortest = maybe True (distance <=) minDistance
-                    newMinDist = if isShortest then Just distance else minDistance
+                let isShortest = maybe True (dist <=) minDistance
+                    newMinDist = if isShortest then Just dist else minDistance
                     pathsToReturn = ([path | isShortest])
                 in pathsToReturn ++ dijkstra queue visited newMinDist
             | current `elem` visited = dijkstra queue visited minDistance
             | otherwise =
                 let adj = adjacent roadmap current
-                    new = queue ++ [(n, path ++ [n], distance + d) | (n, d) <- adj, n `notElem` visited]
+                    new = queue ++ [(n, path ++ [n], dist + d) | (n, d) <- adj, n `notElem` visited]
                     sorted = Data.List.sortOn (\(_, _, d) -> d) new
                 in dijkstra sorted (current : visited) minDistance
 
