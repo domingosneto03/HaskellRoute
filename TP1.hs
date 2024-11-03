@@ -56,16 +56,20 @@ isStronglyConnected roadmap =
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath roadmap startCity finalCity
     | startCity == finalCity = [[startCity]]
-    | otherwise = dijkstra [(startCity, [startCity], 0)] [] where
-        dijkstra [] _ = []
-        dijkstra ((current, path, distance):queue) visited
-            | current == finalCity = [path]
-            | current `elem` visited = dijkstra queue visited
+    | otherwise = dijkstra [(startCity, [startCity], 0)] [] Nothing where
+        dijkstra [] _ _ = []
+        dijkstra ((current, path, distance):queue) visited minDistance
+            | current == finalCity =
+                let isShortest = maybe True (distance <=) minDistance
+                    newMinDist = if isShortest then Just distance else minDistance
+                    pathsToReturn = ([path | isShortest])
+                in pathsToReturn ++ dijkstra queue visited newMinDist
+            | current `elem` visited = dijkstra queue visited minDistance
             | otherwise =
                 let adj = adjacent roadmap current
                     new = queue ++ [(n, path ++ [n], distance + d) | (n, d) <- adj, n `notElem` visited]
                     sorted = Data.List.sortOn (\(_, _, d) -> d) new
-                in dijkstra sorted (current : visited)
+                in dijkstra sorted (current : visited) minDistance
 
 travelSales :: RoadMap -> Path
 travelSales = undefined
@@ -107,4 +111,4 @@ gTest3 = [("0","1",4),("2","3",2)]
 
 -- personal graphs
 gTest4 :: RoadMap -- test for shortest path
-gTest4 = [("0","1",1),("1","3",2), ("0","2",1), ("2","3",2)]
+gTest4 = [("0","1",1),("1","3",2), ("0","2",1), ("2","4",1), ("4","3",1)]
